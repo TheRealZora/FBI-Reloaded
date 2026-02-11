@@ -29,6 +29,7 @@ typedef struct {
     bool showGameCard;
     bool showSD;
     bool showNAND;
+    bool allowNandTitleDeletion;
     bool sortById;
     bool sortByName;
     bool sortBySize;
@@ -39,6 +40,7 @@ typedef struct {
 typedef struct {
     linked_list* items;
     list_item* selected;
+    bool allowNandTitleDeletion;
 } titles_action_data;
 
 static void titles_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -75,7 +77,7 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
 
         title_info* info = (title_info*) actionData->selected->data;
 
-        if(info->mediaType != MEDIATYPE_GAME_CARD) {
+        if(info->twl || (info->mediaType != MEDIATYPE_GAME_CARD && (info->mediaType != MEDIATYPE_NAND || actionData->allowNandTitleDeletion))) {
             linked_list_add(items, &delete_title);
             linked_list_add(items, &delete_title_ticket);
         }
@@ -83,13 +85,12 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
         if(!info->twl) {
             linked_list_add(items, &extract_smdh);
 
-            if(info->mediaType != MEDIATYPE_GAME_CARD) {
-                linked_list_add(items, &import_seed);
+            if(info->mediaType != MEDIATYPE_NAND) {
+                linked_list_add(items, &browse_save_data);
             }
 
-            linked_list_add(items, &browse_save_data);
-
-            if(info->mediaType != MEDIATYPE_GAME_CARD) {
+            if(info->mediaType != MEDIATYPE_GAME_CARD && info->mediaType != MEDIATYPE_NAND) {
+                linked_list_add(items, &import_seed);
                 linked_list_add(items, &import_secure_value);
                 linked_list_add(items, &export_secure_value);
                 linked_list_add(items, &delete_secure_value);
@@ -102,7 +103,7 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
     }
 }
 
-static void titles_action_open(linked_list* items, list_item* selected) {
+static void titles_action_open(linked_list* items, list_item* selected, titles_data* listData) {
     titles_action_data* data = (titles_action_data*) calloc(1, sizeof(titles_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate titles action data.");
@@ -112,6 +113,7 @@ static void titles_action_open(linked_list* items, list_item* selected) {
 
     data->items = items;
     data->selected = selected;
+    data->allowNandTitleDeletion = listData->allowNandTitleDeletion;
 
     list_display("Title Action", "A: Select, B: Return", data, titles_action_update, titles_action_draw_top);
 }
@@ -179,6 +181,7 @@ static void titles_options_update(ui_view* view, void* data, linked_list* items,
         titles_options_add_entry(items, "Show game card", &listData->showGameCard);
         titles_options_add_entry(items, "Show SD", &listData->showSD);
         titles_options_add_entry(items, "Show NAND", &listData->showNAND);
+        titles_options_add_entry(items, "Allow NAND title deletion (!CAREFUL!)", &listData->allowNandTitleDeletion);
         titles_options_add_entry(items, "Sort by ID", &listData->sortById);
         titles_options_add_entry(items, "Sort by name", &listData->sortByName);
         titles_options_add_entry(items, "Sort by size", &listData->sortBySize);
@@ -244,7 +247,7 @@ static void titles_update(ui_view* view, void* data, linked_list* items, list_it
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        titles_action_open(items, selected);
+        titles_action_open(items, selected, listData);
         return;
     }
 }
@@ -326,6 +329,7 @@ void titles_open() {
     data->showGameCard = true;
     data->showSD = true;
     data->showNAND = true;
+    data->allowNandTitleDeletion = false;
     data->sortById = false;
     data->sortByName = true;
     data->sortBySize = false;
