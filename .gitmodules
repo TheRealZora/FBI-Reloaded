@@ -1,4 +1,4 @@
 [submodule "buildtools"]
 	path = buildtools
-	url = git://github.com/TheRealZora/buildtools
+	url = https://github.com/TheRealZora/buildtools
 	shallow = true
